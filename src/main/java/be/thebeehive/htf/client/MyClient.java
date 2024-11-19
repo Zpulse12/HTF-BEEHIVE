@@ -10,9 +10,7 @@ import be.thebeehive.htf.library.protocol.server.GameRoundServerMessage.Values;
 import be.thebeehive.htf.library.protocol.server.WarningServerMessage;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 public class MyClient implements HtfClientListener {
@@ -105,7 +103,7 @@ public class MyClient implements HtfClientListener {
             Values futureValues = ClientUtils.sumValues(ourShip.getValues(), effect.getValues());
             if (futureValues.getHealth().compareTo(BigDecimal.ZERO) <= 0 ||
                     futureValues.getCrew().compareTo(BigDecimal.ZERO) <= 0) {
-                handleDeadlyEffect(effect, availableActions, selectedActions);
+                handleEffect(effect, availableActions, selectedActions, EffectType.DEADLY);
             }
         }
 
@@ -113,34 +111,35 @@ public class MyClient implements HtfClientListener {
             Values effectValues = effect.getValues();
             if (effectValues.getHealth().compareTo(BigDecimal.ZERO) < 0 ||
                     effectValues.getCrew().compareTo(BigDecimal.ZERO) < 0) {
-                handleNegativeEffect(effect, availableActions, selectedActions);
+                handleEffect(effect, availableActions, selectedActions, EffectType.NEGATIVE);
             }
         }
 
         client.send(new SelectActionsClientMessage(msg.getRoundId(), selectedActions));
     }
 
-    private void handleDeadlyEffect(GameRoundServerMessage.Effect effect,
-            List<GameRoundServerMessage.Action> availableActions,
-            List<Long> selectedActions) {
-        for (GameRoundServerMessage.Action action : availableActions) {
-            if (action.getEffectId() == effect.getId()) {
-                selectedActions.add(action.getId());
-                availableActions.remove(action);
-                System.out.printf("Selected Action ID %d to counter deadly effect%n", action.getId());
-                break;
-            }
+    private enum EffectType {
+        DEADLY("deadly"),
+        NEGATIVE("negative");
+
+        private final String description;
+
+        EffectType(String description) {
+            this.description = description;
         }
     }
 
-    private void handleNegativeEffect(GameRoundServerMessage.Effect effect,
+    private void handleEffect(
+            GameRoundServerMessage.Effect effect,
             List<GameRoundServerMessage.Action> availableActions,
-            List<Long> selectedActions) {
+            List<Long> selectedActions,
+            EffectType effectType) {
         for (GameRoundServerMessage.Action action : availableActions) {
             if (action.getEffectId() == effect.getId()) {
                 selectedActions.add(action.getId());
                 availableActions.remove(action);
-                System.out.printf("Selected Action ID %d to counter negative effect%n", action.getId());
+                System.out.printf("Selected Action ID %d to counter %s effect%n", 
+                    action.getId(), effectType.description);
                 break;
             }
         }
