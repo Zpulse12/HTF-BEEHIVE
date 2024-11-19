@@ -103,7 +103,7 @@ public class MyClient implements HtfClientListener {
             Values futureValues = ClientUtils.sumValues(ourShip.getValues(), effect.getValues());
             if (futureValues.getHealth().compareTo(BigDecimal.ZERO) <= 0 ||
                     futureValues.getCrew().compareTo(BigDecimal.ZERO) <= 0) {
-                handleEffect(effect, availableActions, selectedActions, EffectType.DEADLY);
+                handleEffect(effect, availableActions, selectedActions, "deadly");
             }
         }
 
@@ -111,35 +111,24 @@ public class MyClient implements HtfClientListener {
             Values effectValues = effect.getValues();
             if (effectValues.getHealth().compareTo(BigDecimal.ZERO) < 0 ||
                     effectValues.getCrew().compareTo(BigDecimal.ZERO) < 0) {
-                handleEffect(effect, availableActions, selectedActions, EffectType.NEGATIVE);
+                handleEffect(effect, availableActions, selectedActions, "negative");
             }
         }
 
         client.send(new SelectActionsClientMessage(msg.getRoundId(), selectedActions));
     }
 
-    private enum EffectType {
-        DEADLY("deadly"),
-        NEGATIVE("negative");
-
-        private final String description;
-
-        EffectType(String description) {
-            this.description = description;
-        }
-    }
-
     private void handleEffect(
             GameRoundServerMessage.Effect effect,
             List<GameRoundServerMessage.Action> availableActions,
             List<Long> selectedActions,
-            EffectType effectType) {
+            String effectDescription) {
         for (GameRoundServerMessage.Action action : availableActions) {
             if (action.getEffectId() == effect.getId()) {
                 selectedActions.add(action.getId());
                 availableActions.remove(action);
-                System.out.printf("Selected Action ID %d to counter %s effect%n", 
-                    action.getId(), effectType.description);
+                System.out.printf("Selected Action ID %d to counter %s effect%n",
+                        action.getId(), effectDescription);
                 break;
             }
         }
