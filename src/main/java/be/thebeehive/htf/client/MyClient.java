@@ -6,10 +6,13 @@ import be.thebeehive.htf.library.protocol.client.SelectActionsClientMessage;
 import be.thebeehive.htf.library.protocol.server.ErrorServerMessage;
 import be.thebeehive.htf.library.protocol.server.GameEndedServerMessage;
 import be.thebeehive.htf.library.protocol.server.GameRoundServerMessage;
+import be.thebeehive.htf.library.protocol.server.GameRoundServerMessage.Values;
 import be.thebeehive.htf.library.protocol.server.WarningServerMessage;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 
 public class MyClient implements HtfClientListener {
 
@@ -30,7 +33,15 @@ public class MyClient implements HtfClientListener {
      */
     @Override
     public void onGameEndedServerMessage(HtfClient client, GameEndedServerMessage msg) throws Exception {
+        System.err.println("\n====== Game Over ======");
+        System.err.println("Final Round: " + msg.getRound());
+        System.err.println("\nFinal Standings:");
 
+        List<GameEndedServerMessage.LeaderboardTeam> leaderboard = msg.getLeaderboard();
+        for (GameEndedServerMessage.LeaderboardTeam team : leaderboard) {
+            System.err.printf("%s - Points: %s (Survived until round %d)%n",
+                    team.getName(), team.getPoints(), team.getLastRound());
+        }
     }
 
     /**
@@ -40,9 +51,33 @@ public class MyClient implements HtfClientListener {
     @Override
     public void onGameRoundServerMessage(HtfClient client, GameRoundServerMessage msg) throws Exception {
         GameRoundServerMessage.Spaceship ourShip = msg.getOurSpaceship();
+
         if (!ourShip.isAlive()) {
             client.send(new SelectActionsClientMessage(msg.getRoundId(), new ArrayList<>()));
+            return;
         }
+
+        List<Long> selectedActions = new ArrayList<>();
+        List<GameRoundServerMessage.Action> availableActions = new ArrayList<>(msg.getActions());
+        List<GameRoundServerMessage.Effect> effects = msg.getEffects();
+
+        for (GameRoundServerMessage.Effect effect : effects) {
+            Values futureValues = ClientUtils.sumValues(ourShip.getValues(), effect.getValues());
+
+            if (futureValues.getHealth().compareTo(BigDecimal.ZERO) <= 0 ||
+                    futureValues.getCrew().compareTo(BigDecimal.ZERO) <= 0) {
+
+                for (GameRoundServerMessage.Action action : availableActions) {
+                    if (action.getEffectId() == effect.getId()) {
+                        selectedActions.add(action.getId());
+                        availableActions.remove(action);
+                        break;
+                    }
+                }
+            }
+        }
+
+        client.send(new SelectActionsClientMessage(msg.getRoundId(), selectedActions));
     }
 
     /**
